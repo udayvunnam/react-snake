@@ -1,7 +1,7 @@
 .board {
   display: flex;
   flex-direction: column;
-  border: 4px orange solid;
+  background-color: #282c34;
 }
 
 .row {
@@ -10,11 +10,15 @@
 }
 
 .box {
-  width: 30px;
-  height: 30px;
-  border: 1px gray solid;
+  width: 36px;
+  height: 36px;
+  border: 0.5px gray solid;
 }
 
 .box.fill{
   background-color: teal;
+}
+
+.box.food{
+  background-color: orange;
 }

@@ -1,58 +1,90 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useSnakeDirection } from '../hooks/useSnakeDirection';
+import { Score } from '../score/score';
+import { getRandomInitialSnake, MATRIX_SIZE, getRandomBox } from '../util';
 import './board.css';
+import cn from 'classnames';
 
-const MATRIX_SIZE = 20;
+const generateHead = (direction, [row, column]) => {
+  switch (direction) {
+    case 'down':
+      return [row + 1, column];
+    case 'up':
+      return [row - 1, column];
+    case 'right':
+      return [row, column + 1];
+    case 'left':
+      return [row, column - 1];
+    default:
+      return [row, column];
+  }
+};
 
-export const Board = () => {
-  const [snake, setSnake] = useState([
-    [1, 4],
-    [2, 4],
-    [3, 4],
-  ]);
-  const [direction, setDirection] = useState('down'); // down, up , right, left
+const generateRandomFood = (snake) => {
+  let food = getRandomBox();
+  while (snake.contains(food)) {
+    food = getRandomBox();
+  }
+  return food;
+};
 
-  const move = useCallback(
-    (box) => {
-      const [row, column] = box;
-      switch (direction) {
-        case 'down':
-          return [row + 1, column];
-        case 'up':
-          return [row - 1, column];
-        case 'right':
-          return [row, column + 1];
-        case 'left':
-          return [row, column - 1];
-        default:
-          return [row + 1, column];
-      }
-    },
-    [direction]
-  );
+export const Board = ({ onGameEnd }) => {
+  const snakeRef = useRef(getRandomInitialSnake());
+  const [food, setFood] = useState(generateRandomFood(snakeRef.current));
+
+  const [score, setScore] = useState(0);
+  const direction = useSnakeDirection();
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      setSnake((snake) => {
-        return snake.map(move);
-      });
-    }, 1000);
+      const snake = snakeRef.current;
+      const head = generateHead(direction, snake.head.data);
+      if (head.includes(-1) || head.includes(20)) {
+        onGameEnd(score);
+      } else {
+        const [foodRow, foodColumn] = food;
+        const [row, column] = head;
+        if (foodRow === row && foodColumn === column) {
+          snake.add(head);
+          setScore((score) => score + 5);
+          setFood(generateRandomFood(snakeRef.current));
+        } else {
+          snake.add(head);
+          snake.removeTail();
+          setScore((score) => score + 1);
+        }
+      }
+    }, 500);
 
-    return clearInterval(intervalId);
-  }, [move]);
+    return () => clearInterval(intervalId);
+  }, [direction, score, onGameEnd, food]);
 
   let rows = [];
 
   for (let row = 0; row < MATRIX_SIZE; row++) {
     const columns = [];
     for (let column = 0; column < MATRIX_SIZE; column++) {
-      const isSelected = snake.some((box) => {
-        const [boxRow, boxColumn] = box;
-        return boxRow === row && boxColumn === column;
-      });
-      columns.push(<div className={`box ${isSelected ? 'fill' : ''}`} />);
+      const isSnakeCell = snakeRef.current.contains([row, column]);
+      let isFoodCell;
+      const [foodRow, foodColumn] = food;
+      if (foodRow === row && foodColumn === column) {
+        isFoodCell = true;
+      }
+      columns.push(
+        <div className={cn('box', { fill: isSnakeCell, food: isFoodCell })} key={column} />
+      );
     }
-    rows.push(<div className="row">{columns}</div>);
+    rows.push(
+      <div className="row" key={row}>
+        {columns}
+      </div>
+    );
   }
 
-  return <div className="board">{rows}</div>;
+  return (
+    <section>
+      <div className="board">{rows}</div>
+      <Score score={score} />
+    </section>
+  );
 };
